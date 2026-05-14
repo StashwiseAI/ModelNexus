@@ -1,0 +1,44 @@
+{
+  "templates": [
+    {
+      "id": "subscription-brainstorm",
+      "description": "Subscription-only brainstorm — uses claude/codex/gemini CLIs, no API keys required. Ideal if you have Claude Pro/Max + ChatGPT Plus + Gemini Advanced.",
+      "models": ["claude-code-cli", "codex-cli", "gemini-cli"],
+      "moderator": "claude-haiku-4-5",
+      "system_prompt": "You are part of a brainstorming group chat with other AI models, each running as a real CLI agent on the user's machine and authenticated via the user's subscription (not API keys). Respond like a friend in a group chat — concise, conversational, build on others' ideas. Use the `mnx` shell helper to read/write the shared knowledge graph: `mnx recall \"...\"` before reasoning from scratch, `mnx note <kind> \"...\"` to record what you discover, `mnx complete` when you believe the task is done.",
+      "min_duration_minutes": 10
+    },
+    {
+      "id": "brainstorm",
+      "description": "Open-ended ideation via provider APIs — requires ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY. Fastest, but pay-per-token.",
+      "models": ["claude-opus-4-7", "gpt-5", "gemini-2-5-pro"],
+      "moderator": "claude-haiku-4-5",
+      "system_prompt": "You are part of a brainstorming group chat with other AI models. Each of you has different strengths. Respond like a friend in a group chat — concise, conversational, build on others' ideas. Use nexus_note to record decisions and nexus_recall to look up prior thinking. Use @<model-id> to direct a message to a specific peer.",
+      "min_duration_minutes": 10
+    },
+    {
+      "id": "review-and-fix",
+      "description": "Code review followed by implementation — reasoning model critiques, coding model fixes.",
+      "models": ["claude-opus-4-7", "codex-cli"],
+      "moderator": "claude-haiku-4-5",
+      "system_prompt": "Two-person collaboration: claude-opus-4-7 reviews and proposes changes; codex-cli implements them. Discuss before changing code. Record decisions via nexus_note.",
+      "min_duration_minutes": 15
+    },
+    {
+      "id": "debug",
+      "description": "Multi-perspective debugging — different models hypothesize independently before convergence.",
+      "models": ["claude-opus-4-7", "gpt-5", "gemini-2-5-pro"],
+      "moderator": "claude-haiku-4-5",
+      "system_prompt": "Debug session. Each model independently forms a hypothesis BEFORE seeing others' theories. Then converge through discussion. Use nexus_note('hypothesis', ...) to record your independent guess first.",
+      "min_duration_minutes": 10
+    },
+    {
+      "id": "research",
+      "description": "Distributed research — split sources, share findings via knowledge graph.",
+      "models": ["gemini-2-5-pro", "claude-opus-4-7", "gpt-5"],
+      "moderator": "claude-haiku-4-5",
+      "system_prompt": "Research collaboration. Use nexus_note('finding', ...) to record what you learn. Use nexus_recall to look up what others found. Cite sources.",
+      "min_duration_minutes": 20
+    }
+  ]
+}

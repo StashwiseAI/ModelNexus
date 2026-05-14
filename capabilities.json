@@ -1,0 +1,110 @@
+{
+  "moderator_model": "claude-haiku-4-5-20251001",
+  "models": [
+    {
+      "id": "claude-opus-4-7",
+      "runtime": "api",
+      "provider": "anthropic",
+      "api_model": "claude-opus-4-7",
+      "strengths": ["reasoning", "long-context", "writing", "coding", "synthesis"],
+      "cost_class": "high",
+      "max_context": 1000000,
+      "color": "magenta",
+      "icon": "★"
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "runtime": "api",
+      "provider": "anthropic",
+      "api_model": "claude-sonnet-4-6",
+      "strengths": ["reasoning", "coding", "balanced"],
+      "cost_class": "med",
+      "max_context": 200000,
+      "color": "green",
+      "icon": "●"
+    },
+    {
+      "id": "claude-haiku-4-5",
+      "runtime": "api",
+      "provider": "anthropic",
+      "api_model": "claude-haiku-4-5-20251001",
+      "strengths": ["fast", "moderator", "routing"],
+      "cost_class": "low",
+      "max_context": 200000,
+      "color": "cyan",
+      "icon": "○"
+    },
+    {
+      "id": "gpt-5",
+      "runtime": "api",
+      "provider": "openai",
+      "api_model": "gpt-5",
+      "strengths": ["reasoning", "math", "vision", "tool-use"],
+      "cost_class": "med",
+      "max_context": 400000,
+      "color": "yellow",
+      "icon": "◆"
+    },
+    {
+      "id": "gemini-2-5-pro",
+      "runtime": "api",
+      "provider": "google",
+      "api_model": "gemini-2.5-pro",
+      "strengths": ["vision", "web-context", "long-context", "multilingual"],
+      "cost_class": "low",
+      "max_context": 2000000,
+      "color": "blue",
+      "icon": "▲"
+    },
+    {
+      "id": "claude-code-cli",
+      "runtime": "subprocess",
+      "command": "claude",
+      "args_template": ["-p", "--allow-dangerously-skip-permissions"],
+      "prompt_via": "stdin",
+      "timeout_ms": 180000,
+      "strengths": ["coding", "tool-use", "filesystem", "agentic", "reasoning"],
+      "cost_class": "high",
+      "color": "green",
+      "icon": "●"
+    },
+    {
+      "id": "codex-cli",
+      "runtime": "subprocess",
+      "command": "codex",
+      "args_template": ["exec"],
+      "prompt_via": "arg",
+      "timeout_ms": 180000,
+      "output_marker_start": "\ncodex\n",
+      "output_marker_end": "\ntokens used\n",
+      "strengths": ["coding", "refactor", "execution"],
+      "cost_class": "med",
+      "color": "blue",
+      "icon": "◆"
+    },
+    {
+      "id": "gemini-cli",
+      "runtime": "subprocess",
+      "command": "gemini",
+      "args_template": ["-p"],
+      "prompt_via": "arg",
+      "timeout_ms": 180000,
+      "strengths": ["vision", "long-context", "web"],
+      "cost_class": "low",
+      "color": "yellow",
+      "icon": "★"
+    },
+    {
+      "id": "aider-cli",
+      "runtime": "subprocess",
+      "command": "aider",
+      "args_template": ["--message"],
+      "prompt_via": "arg",
+      "timeout_ms": 180000,
+      "strengths": ["coding", "refactor", "git"],
+      "cost_class": "med",
+      "color": "magenta",
+      "icon": "▲"
+    }
+  ]
+}
