@@ -103,11 +103,11 @@ cmd_ask() {
   local prompt=""
 
   peer="${1:-}"
-  shift || fail "ask: peer required (codex | claude | gemini | aider)"
+  shift || fail "ask: peer required (codex | claude | gemini)"
 
   case "$peer" in
-    codex|claude|gemini|aider) ;;
-    *) fail "unknown peer: $peer (expected codex | claude | gemini | aider)" ;;
+    codex|claude|gemini) ;;
+    *) fail "unknown peer: $peer (expected codex | claude | gemini)" ;;
   esac
 
   while [[ $# -gt 0 ]]; do
@@ -163,12 +163,6 @@ cmd_ask() {
       # Gemini has no native --role; fold the role preamble into the prompt.
       if [[ -n "$role" ]]; then
         prompt=$(printf '%s\n\n%s' "$(role_preamble "$role")" "$prompt")
-      fi
-      ;;
-    aider)
-      # Aider writes files. Refuse silently — caller MUST acknowledge.
-      if [[ -z "${NEXUS_AIDER_OK:-}" ]]; then
-        fail "aider writes files autonomously. Set NEXUS_AIDER_OK=1 to acknowledge before invoking."
       fi
       ;;
   esac

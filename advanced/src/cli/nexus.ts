@@ -242,7 +242,6 @@ program
       { id: 'claude-code-cli', cmd: 'claude', subscription: 'Claude Pro/Max' },
       { id: 'codex-cli', cmd: 'codex', subscription: 'ChatGPT Plus/Pro/Team or OpenAI API' },
       { id: 'gemini-cli', cmd: 'gemini', subscription: 'Google Gemini Advanced / Code Assist' },
-      { id: 'aider-cli', cmd: 'aider', subscription: 'BYO provider' },
     ]
     for (const c of candidates) {
       try {

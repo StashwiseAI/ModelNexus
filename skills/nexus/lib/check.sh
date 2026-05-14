@@ -15,8 +15,7 @@ check_one() {
 check_one "claude" "claude" "Claude Pro/Max login or ANTHROPIC_API_KEY"
 check_one "codex"  "codex"  "ChatGPT Plus/Pro/Team or OPENAI_API_KEY"
 check_one "gemini" "gemini" "Google login (Gemini Advanced / Code Assist)"
-check_one "aider"  "aider"  "BYO provider key"
 echo
 echo "Tip: this skill works as long as at least ONE peer model is installed."
-echo "Inside Claude Code, \`claude\` is usually the host — you'd use codex/gemini/aider as peers."
+echo "Inside Claude Code, \`claude\` is usually the host — you'd use codex/gemini as peers."
 echo "Inside Codex CLI, \`codex\` is the host — you'd use claude/gemini as peers."

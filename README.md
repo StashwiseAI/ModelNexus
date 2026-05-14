@@ -56,7 +56,6 @@ Which peer CLIs are available:
   ✓ claude          on PATH (auth: Claude Pro/Max login or ANTHROPIC_API_KEY)
   ✓ codex           on PATH (auth: ChatGPT Plus/Pro/Team or OPENAI_API_KEY)
   ✗ gemini          NOT installed
-  ✗ aider           NOT installed
 ```
 
 A green `✓` means installed. A red `✗` means the peer CLI isn't on your `PATH` — that's fine as long as at least one peer is available.
@@ -81,9 +80,6 @@ If nothing happens or the host model says it doesn't know about nexus, **start a
 | `Codex CLI: codex not on PATH` | If you have ChatGPT Plus and want to use Codex, install: `npm install -g @openai/codex`. Then re-run `./install.sh`. |
 | The host model doesn't seem to know about `nexus` | Quit your Claude Code / Codex CLI session and start a fresh one. Skills are loaded at session start. |
 | Existing `~/.codex/AGENTS.md` blocks the link | The installer will tell you. Either remove it (`rm ~/.codex/AGENTS.md`) and re-run, or append: `cat skills/nexus/AGENTS.md >> ~/.codex/AGENTS.md`. |
-| Want to also install aider? | Run `./install.sh --with-aider`. Aider is **not** installed by default because it requires an API key (Claude Pro / ChatGPT Plus subscriptions don't work for it), and the other peers usually cover the same use cases. See "Available peers" above for what aider does. |
-| `aider install: no pipx/brew/uv on PATH` | macOS: `brew install pipx`, then re-run `./install.sh --with-aider`. Linux: `python3 -m pip install --user pipx && python3 -m pipx ensurepath`, then re-run. |
-| Aider needs an API key | Unlike `claude`/`codex` which use subscriptions, aider can't. After install, `export ANTHROPIC_API_KEY=...` (or `OPENAI_API_KEY=...` / `GEMINI_API_KEY=...`) in your `~/.zshrc` / `~/.bashrc`. |
 
 The installer is **idempotent** — run it as many times as you want. It detects what's already set up and skips it.
 
@@ -188,7 +184,6 @@ You don't need to memorize commands. Any of these phrasings work — your host m
 | "Ask codex…" / "What does codex think…" / "Have codex draft…" | Codex |
 | "Ask claude…" / "Get claude's take…" *(from non-Claude hosts)* | Claude |
 | "Check with gemini…" / "Have gemini summarize…" | Gemini |
-| "Use aider to make these changes…" *(host will confirm first — aider writes files)* | Aider |
 | "Get a second opinion on…" / "Sanity-check this with…" | Whichever peer fits best |
 | "Remember…" / "We decided…" / "For later…" | Notes |
 | "What did we decide about…" / "Recall…" | Search notes |
@@ -204,7 +199,6 @@ The host model also picks a **role** automatically based on what you asked — "
 | **Claude** | Claude Pro/Max login (or `ANTHROPIC_API_KEY`) | Synthesis, long-form reasoning, cross-cutting design |
 | **Codex** | ChatGPT Plus/Pro/Team login (or `OPENAI_API_KEY`) | Precise patches, refactors, narrow bug fixes |
 | **Gemini** | Google login (Gemini Advanced / Code Assist) | Long context, vision, web-context summaries |
-| **Aider** | BYO provider key | Autonomous multi-file edits with commits |
 
 You don't need all of them — just one peer different from your host is enough. Your host won't consult itself; if you're in Claude Code, "ask claude" is ignored; if you're in Codex CLI, "ask codex" is ignored.
 
@@ -216,7 +210,6 @@ You don't need all of them — just one peer different from your host is enough.
 - **Be explicit about output shape.** *"Return only the diff, no prose"* gets a clean patch; *"explain in 2 bullets"* gets 2 bullets.
 - **One peer call per question.** If you want Claude to challenge Codex's reply, just say so — don't expect a silent ping-pong loop.
 - **Verify peer-cited line numbers.** Reasoning models fabricate plausible-looking `file:line` refs they never actually saw. Your host model will treat them as signposts, not facts — and you should too.
-- **Aider needs your okay each time.** It writes files. Your host will surface a confirmation prompt before invoking it.
 
 ---
 

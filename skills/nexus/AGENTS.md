@@ -2,7 +2,7 @@
 
 > **Audience: any CLI agent that reads `AGENTS.md`** (Codex CLI, future Codex-compatible hosts, etc.). The Claude Code version of this guidance lives in `SKILL.md` and is auto-loaded by Claude Code from `~/.claude/skills/nexus/SKILL.md`.
 
-When the user asks for a **second opinion**, says *"ask claude"*, *"ask gemini"*, *"ask another model"*, *"check this with X"*, or any task where a different model's strengths would clearly produce a better answer than you alone, invoke a peer via the shell helpers below. The peer's reply comes back as stdout — quote it in your response so the user sees who said what.
+When the user asks for a **second opinion**, says *"ask claude"*, *"ask gemini"*, *"ask another model"*, *"check this with X"*, or any task where a different model's strengths would clearly produce a better answer than you alone, invoke a peer via the front-door command below. The peer's reply comes back as stdout — quote it in your response so the user sees who said what.
 
 ## Helpers
 
@@ -12,9 +12,9 @@ All callable via your `Bash`-equivalent tool. The single front door does the rig
 ~/.claude/skills/nexus/nexus.sh ask <peer> "<question>"
 ```
 
-`<peer>` is one of `claude | codex | gemini | aider`. **Don't ask the host model to consult itself** — if you're Codex, don't `ask codex`; if you're Claude, don't `ask claude`.
+`<peer>` is one of `claude | codex | gemini`. **Don't ask the host model to consult itself** — if you're Codex, don't `ask codex`; if you're Claude, don't `ask claude`.
 
-The wrapper auto-infers role from prompt keywords, defaults effort to `low` for chat-style use, enforces a 120s timeout, writes a metadata-only call log to `~/.modelnexus/calls.log`, and refuses `aider` without `NEXUS_AIDER_OK=1` (aider writes files autonomously).
+The wrapper auto-infers role from prompt keywords, defaults effort to `low` for chat-style use, enforces a 120s timeout, and writes a metadata-only call log to `~/.modelnexus/calls.log`.
 
 ```bash
 ~/.claude/skills/nexus/nexus.sh note <kind> "<content>"        # cross-session memory
@@ -23,13 +23,12 @@ The wrapper auto-infers role from prompt keywords, defaults effort to `low` for 
 ~/.claude/skills/nexus/nexus.sh log [--tail <n>]               # call history
 ```
 
-## Peer strengths (when you're inside Codex, your peers are claude/gemini/aider)
+## Peer strengths (when you're inside Codex, your peers are claude/gemini)
 
 | Peer | Reach for it when |
 |---|---|
 | **claude** | Synthesis, long-form reasoning, cross-cutting design discussion, "what's the right shape of this solution" |
 | **gemini** | Long context (whole repo summaries), vision (screenshots, diagrams), web/search-context, multilingual |
-| **aider** | "Make these edits across these files and commit them" — autonomous file writes (gated by `NEXUS_AIDER_OK=1`) |
 
 ## Auto-role inference (no flags needed)
 
@@ -50,9 +49,8 @@ Override with `--role <role>` when the auto pick is wrong, or `--context-file <p
 1. **One call per question.** Don't loop on peers — ping-pong silently between models is rarely what the user wants.
 2. **Quote the peer's reply.** The user should see who said what.
 3. **Verify peer-cited file:line refs.** Reasoning models often fabricate plausible-looking line numbers they never actually saw. The substantive claim may be right; the citation is a signpost, not a fact.
-4. **Don't `ask aider` without confirming with the user first** and setting `NEXUS_AIDER_OK=1`. Aider writes files.
-5. **Default to silence.** If you can answer well alone, just answer. Peers are specialists, not a committee.
-6. **Don't ask the host model to consult itself.** Skip `ask claude` from Claude Code, `ask codex` from Codex CLI, etc.
+4. **Default to silence.** If you can answer well alone, just answer. Peers are specialists, not a committee.
+5. **Don't ask the host model to consult itself.** Skip `ask claude` from Claude Code, `ask codex` from Codex CLI, etc.
 
 ## Cross-session notes
 

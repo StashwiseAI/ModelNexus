@@ -93,18 +93,6 @@
       "cost_class": "low",
       "color": "yellow",
       "icon": "★"
-    },
-    {
-      "id": "aider-cli",
-      "runtime": "subprocess",
-      "command": "aider",
-      "args_template": ["--message"],
-      "prompt_via": "arg",
-      "timeout_ms": 180000,
-      "strengths": ["coding", "refactor", "git"],
-      "cost_class": "med",
-      "color": "magenta",
-      "icon": "▲"
     }
   ]
 }

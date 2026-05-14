@@ -1,4 +1,4 @@
-// mnx — the helper that tmux-spawned CLI agents (claude, codex, gemini, aider)
+// mnx — the helper that tmux-spawned CLI agents (claude, codex, gemini)
 // run from their shell to interact with the shared knowledge graph.
 //
 // Usage from inside a tmux agent session:

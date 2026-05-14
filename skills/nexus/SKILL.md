@@ -1,11 +1,11 @@
 ---
 name: nexus
-description: Confer with Claude, Codex, Gemini, or Aider inline mid-conversation without leaving the current host CLI. Use when the user asks for "a second opinion", says "ask codex", "ask claude", "check with gemini", "have aider try this", asks to compare approaches across models, or whenever a different model's strengths (e.g. Codex for precise code patches, Claude for synthesis, Gemini for long-context or vision, Aider for structured repo edits) would clearly produce a better answer than the host model alone. Also use for cross-session notes via note/recall when the user asks to "remember" or "recall" something across sessions.
+description: Confer with Claude, Codex, or Gemini inline mid-conversation without leaving the current host CLI. Use when the user asks for "a second opinion", says "ask codex", "ask claude", "check with gemini", asks to compare approaches across models, or whenever a different model's strengths (e.g. Codex for precise code patches, Claude for synthesis, Gemini for long-context or vision) would clearly produce a better answer than the host model alone. Also use for cross-session notes via note/recall when the user asks to "remember" or "recall" something across sessions.
 ---
 
 # nexus — inline multi-model collaboration
 
-This skill turns peer AI CLIs into inline tools you can call mid-response. Each helper runs a one-shot CLI invocation against the user's existing subscription (Claude Pro/Max for `claude`, ChatGPT Plus/Pro for `codex`, Gemini Advanced for `gemini`, BYO for `aider`) — no API keys, no daemon, no separate window. Output appears as a normal tool result in the current conversation.
+This skill turns peer AI CLIs into inline tools you can call mid-response. Each helper runs a one-shot CLI invocation against the user's existing subscription (Claude Pro/Max for `claude`, ChatGPT Plus/Pro for `codex`, Gemini Advanced for `gemini`) — no API keys, no daemon, no separate window. Output appears as a normal tool result in the current conversation.
 
 ## When to reach for each peer
 
@@ -14,7 +14,6 @@ This skill turns peer AI CLIs into inline tools you can call mid-response. Each 
 | **codex** | Precise code patches, refactors, narrow bug fixes, "show me the exact diff" requests. Strong at single-file edits with strict constraints. ~10s per call at `--effort low`. |
 | **claude** | Synthesis, long-form reasoning, cross-cutting design discussion. Used as a peer when the host CLI is *not* Claude Code (e.g. when invoked from inside Codex CLI). |
 | **gemini** | Long context (whole codebase summaries, large doc dumps), vision (screenshots, diagrams), web/search-context queries, multilingual work. |
-| **aider** | When the task is "make these specific changes across these files and commit" and you trust aider to apply edits autonomously. Note: aider writes to the working tree by default — `nexus.sh` refuses to run it without `NEXUS_AIDER_OK=1` set. Confirm with the user before invoking. |
 
 Don't ask the host model to consult *itself* — if you're inside Claude Code, don't `ask claude`; if you're inside Codex CLI, don't `ask codex`. The host's main thread already is that model.
 
@@ -26,7 +25,7 @@ The recommended invocation is **just the peer name and the question** — no fla
 ~/.claude/skills/nexus/nexus.sh ask <peer> "<question>"
 ```
 
-`<peer>` is one of `codex | claude | gemini | aider`. The wrapper auto-infers the right `--role` from the prompt text (see below), defaults `--effort` to `low` for chat-style use, enforces a 120s timeout, writes a metadata-only call log to `~/.modelnexus/calls.log`, and refuses `aider` without `NEXUS_AIDER_OK=1`.
+`<peer>` is one of `codex | claude | gemini`. The wrapper auto-infers the right `--role` from the prompt text (see below), defaults `--effort` to `low` for chat-style use, enforces a 120s timeout, and writes a metadata-only call log to `~/.modelnexus/calls.log`.
 
 The other subcommands:
 
@@ -106,13 +105,6 @@ Available role keywords (any other value is used as `"You are acting as <role>"`
 ~/.claude/skills/nexus/nexus.sh ask gemini --context-file design.md "Critique this design doc; flag unstated assumptions."
 ```
 
-### Aider examples
-```bash
-# Aider WRITES FILES. Confirm with the user first, then set the ack flag:
-NEXUS_AIDER_OK=1 ~/.claude/skills/nexus/nexus.sh ask aider \
-  "Rename oldFunc to newFunc across all *.ts files and update tests."
-# Both nexus.sh AND lib/ask-aider.sh refuse without NEXUS_AIDER_OK=1.
-```
 
 ### note / recall (cross-session memory)
 ```bash
@@ -151,7 +143,7 @@ Done. Want me to run the tests?
 
 Subprocess peers are stateless — they see nothing except what you pass them. Garbage in, shallow out. A useful prompt to a peer has four parts:
 
-1. **Role** — what kind of answer you want (use `--role <role>` for codex; for gemini/aider, prepend it in the prompt text)
+1. **Role** — what kind of answer you want (use `--role <role>` for codex; for claude/gemini, the wrapper prepends the role preamble for you)
 2. **Context** — relevant file(s) folded in via `--file`, or the surrounding situation in 1-2 sentences
 3. **Goal + constraints** — exactly what to produce, exactly what to avoid
 4. **Expected output shape** — diff? bullets? JSON? one sentence? Be explicit.
@@ -177,7 +169,7 @@ ask-codex.sh --role patcher --file src/auth/middleware.ts \
   "Add JWT verification before the cookie check. Preserve the existing logging. Return only a unified diff against src/auth/middleware.ts; no prose."
 ```
 
-The same shape applies to `ask-gemini.sh` (prepend the role in the prompt since `--role` is codex-only there). For aider, the prompt should be a precise change description because aider will *apply* it.
+The same shape applies to `ask-gemini.sh` and `ask-claude.sh` — `nexus.sh` folds the role preamble into the prompt for you when you pass `--role` for those peers.
 
 ## Rules
 
@@ -185,8 +177,7 @@ The same shape applies to `ask-gemini.sh` (prepend the role in the prompt since 
 2. **Don't loop on peers.** One call per question, not three. If a peer's reply needs follow-up, do the follow-up yourself or ask the user — don't ping-pong silently.
 3. **Quote the peer's reply** when surfacing it in your response so the user knows what came from whom.
 4. **Cite the peer in `note.sh`** when persisting their finding (e.g. `"Codex (2026-05-14): race on line 47"`).
-5. **Confirm before aider** — it writes files. Don't run `ask-aider.sh` without the user okaying the autonomous edits.
-6. **Default to silence** — if Claude alone has high confidence, just answer. The skill is for when a peer is genuinely the right specialist, not for every reply.
+5. **Default to silence** — if Claude alone has high confidence, just answer. The skill is for when a peer is genuinely the right specialist, not for every reply.
 
 ## Install
 
