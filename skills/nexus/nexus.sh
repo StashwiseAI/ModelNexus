@@ -92,8 +92,88 @@ role_preamble() {
   esac
 }
 
+# Visual bar around each peer reply — makes the response distinct in
+# transcripts so host models don't paraphrase it away.
+print_peer_bar() {
+  local peer="$1" role="${2:-no role}" dur="${3:-}"
+  echo "══════════════════════════════════════════════════════════"
+  if [[ -n "$dur" && "$dur" != "0" ]]; then
+    echo "  ${peer} · ${role} · ${dur}s"
+  else
+    echo "  ${peer} · ${role}"
+  fi
+  echo "══════════════════════════════════════════════════════════"
+  echo
+}
+
+print_peer_end_bar() {
+  echo
+  echo "══════════════════════════════════════════════════════════"
+}
+
+# Internal: invoke one peer, write outputs to ${prefix}.out / .dur / .ec / .err.
+# Safe to run in a background subshell. Side-effects are confined to the
+# files under ${prefix}*, so the parent can wait on all of them and then
+# render bars in stable order.
+__ask_one() {
+  local peer="$1" role="$2" context_file="$3" effort="$4" timeout="$5" prompt="$6" prefix="$7"
+  local helper="$LIB/ask-$peer.sh"
+  local args=()
+
+  case "$peer" in
+    codex)
+      [[ -n "$role" ]]         && args+=(--role "$role")
+      [[ -n "$context_file" ]] && args+=(--file "$context_file")
+      [[ -n "$effort" ]]       && args+=(--effort "$effort")
+      [[ -z "$effort" ]]       && args+=(--effort low)  # default to fast for chat use
+      ;;
+    claude)
+      [[ -n "$context_file" ]] && args+=(--file "$context_file")
+      [[ -n "$effort" ]]       && args+=(--effort "$effort")
+      [[ -z "$effort" ]]       && args+=(--effort low)
+      if [[ -n "$role" ]]; then
+        prompt=$(printf '%s\n\n%s' "$(role_preamble "$role")" "$prompt")
+      fi
+      ;;
+    gemini)
+      [[ -n "$context_file" ]] && args+=(--file "$context_file")
+      if [[ -n "$role" ]]; then
+        prompt=$(printf '%s\n\n%s' "$(role_preamble "$role")" "$prompt")
+      fi
+      ;;
+  esac
+
+  local start_ts end_ts dur ec
+  start_ts=$(date +%s)
+  set +e
+  # `${args[@]+"${args[@]}"}` safely expands a possibly-empty array under
+  # `set -u`. Necessary because macOS still ships bash 3.2.
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --kill-after=5 "${timeout}s" "$helper" ${args[@]+"${args[@]}"} "$prompt" >"$prefix.out" 2>"$prefix.err"
+    ec=$?
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout --kill-after=5 "${timeout}s" "$helper" ${args[@]+"${args[@]}"} "$prompt" >"$prefix.out" 2>"$prefix.err"
+    ec=$?
+  else
+    "$helper" ${args[@]+"${args[@]}"} "$prompt" >"$prefix.out" 2>"$prefix.err" &
+    local pid=$!
+    { sleep "$timeout" && kill -TERM "$pid" 2>/dev/null && sleep 5 && kill -KILL "$pid" 2>/dev/null; } >/dev/null 2>&1 &
+    local killer=$!
+    disown "$killer" 2>/dev/null || true
+    wait "$pid" 2>/dev/null
+    ec=$?
+    kill "$killer" 2>/dev/null >/dev/null 2>&1 || true
+  fi
+  set -e
+  end_ts=$(date +%s)
+  dur=$((end_ts - start_ts))
+
+  echo "$dur" > "$prefix.dur"
+  echo "$ec"  > "$prefix.ec"
+}
+
 cmd_ask() {
-  local peer=""
+  local peers_arg=""
   local role=""
   local context_file=""
   local effort=""
@@ -102,14 +182,31 @@ cmd_ask() {
   local quiet=0
   local prompt=""
 
-  peer="${1:-}"
-  shift || fail "ask: peer required (codex | claude | gemini)"
+  peers_arg="${1:-}"
+  shift || fail "ask: peer(s) required (codex | claude | gemini | comma-separated | 'all')"
 
-  case "$peer" in
-    codex|claude|gemini) ;;
-    *) fail "unknown peer: $peer (expected codex | claude | gemini)" ;;
-  esac
+  # Expand the special 'all' alias to every peer that has a helper on disk.
+  if [[ "$peers_arg" == "all" ]]; then
+    local all_peers=()
+    for p in claude codex gemini; do
+      [[ -x "$LIB/ask-$p.sh" ]] && all_peers+=("$p")
+    done
+    peers_arg=$(IFS=,; echo "${all_peers[*]}")
+  fi
 
+  # Parse comma-separated peer list
+  IFS=',' read -ra peer_list <<< "$peers_arg"
+
+  # Validate each peer + helper
+  for p in "${peer_list[@]}"; do
+    case "$p" in
+      codex|claude|gemini) ;;
+      *) fail "unknown peer: $p (expected codex | claude | gemini)" ;;
+    esac
+    [[ -x "$LIB/ask-$p.sh" ]] || fail "helper missing: $LIB/ask-$p.sh"
+  done
+
+  # Parse flags
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --role)         role="$2"; shift 2 ;;
@@ -125,13 +222,9 @@ cmd_ask() {
   if [[ -z "$prompt" && ! -t 0 ]]; then
     prompt=$(cat)
   fi
-  [[ -z "$prompt" ]] && fail "ask $peer: prompt required"
+  [[ -z "$prompt" ]] && fail "ask: prompt required"
 
-  local helper="$LIB/ask-$peer.sh"
-  [[ -x "$helper" ]] || fail "helper missing: $helper"
-
-  # AUTO-INFER role if caller didn't pass one explicitly.
-  # Logged so the caller can see what was picked (and tune the prompt if wrong).
+  # Auto-infer role if caller didn't pass one explicitly.
   local inferred_role=""
   if [[ -z "$role" ]]; then
     inferred_role=$(infer_role "$prompt")
@@ -141,88 +234,92 @@ cmd_ask() {
     fi
   fi
 
-  local args=()
-  case "$peer" in
-    codex)
-      [[ -n "$role" ]]         && args+=(--role "$role")
-      [[ -n "$context_file" ]] && args+=(--file "$context_file")
-      [[ -n "$effort" ]]       && args+=(--effort "$effort")
-      [[ -z "$effort" ]]       && args+=(--effort low)  # default to fast for chat use
-      ;;
-    claude)
-      [[ -n "$context_file" ]] && args+=(--file "$context_file")
-      [[ -n "$effort" ]]       && args+=(--effort "$effort")
-      [[ -z "$effort" ]]       && args+=(--effort low)
-      # Claude has no native --role; fold the role preamble into the prompt.
-      if [[ -n "$role" ]]; then
-        prompt=$(printf '%s\n\n%s' "$(role_preamble "$role")" "$prompt")
-      fi
-      ;;
-    gemini)
-      [[ -n "$context_file" ]] && args+=(--file "$context_file")
-      # Gemini has no native --role; fold the role preamble into the prompt.
-      if [[ -n "$role" ]]; then
-        prompt=$(printf '%s\n\n%s' "$(role_preamble "$role")" "$prompt")
-      fi
-      ;;
-  esac
+  # Tempdir for sidecar files (one set per peer)
+  local tmpdir
+  tmpdir=$(mktemp -d -t nexus-ask-XXXXXX)
 
-  local outfile errfile start_ts end_ts dur ec reply prompt_chars reply_chars
-  outfile=$(mktemp -t nexus-out-XXXXXX)
-  errfile=$(mktemp -t nexus-err-XXXXXX)
-
-  start_ts=$(date +%s)
-  set +e
-  if command -v timeout >/dev/null 2>&1; then
-    timeout --kill-after=5 "${timeout}s" "$helper" "${args[@]}" "$prompt" >"$outfile" 2>"$errfile"
-    ec=$?
-  elif command -v gtimeout >/dev/null 2>&1; then
-    gtimeout --kill-after=5 "${timeout}s" "$helper" "${args[@]}" "$prompt" >"$outfile" 2>"$errfile"
-    ec=$?
-  else
-    # Portable fallback: background helper + watchdog that kills it after timeout.
-    # `disown` keeps the watchdog from emitting its own "Terminated" message.
-    "$helper" "${args[@]}" "$prompt" >"$outfile" 2>"$errfile" &
-    local pid=$!
-    { sleep "$timeout" && kill -TERM "$pid" 2>/dev/null && sleep 5 && kill -KILL "$pid" 2>/dev/null; } >/dev/null 2>&1 &
-    local killer=$!
-    disown "$killer" 2>/dev/null || true
-    wait "$pid" 2>/dev/null
-    ec=$?
-    kill "$killer" 2>/dev/null >/dev/null 2>&1 || true
+  # Run all peers in parallel (or sequentially if only one).
+  if [[ ${#peer_list[@]} -gt 1 && $quiet -eq 0 ]]; then
+    echo "nexus: asking ${#peer_list[@]} peers in parallel: ${peer_list[*]}" >&2
   fi
-  set -e
-  end_ts=$(date +%s)
-  dur=$((end_ts - start_ts))
+  local pids=()
+  for p in "${peer_list[@]}"; do
+    ( __ask_one "$p" "$role" "$context_file" "$effort" "$timeout" "$prompt" "$tmpdir/$p" ) &
+    pids+=($!)
+  done
+  for pid in "${pids[@]}"; do
+    wait "$pid" 2>/dev/null || true
+  done
 
-  reply=$(cat "$outfile" 2>/dev/null || true)
-  local err_text
-  err_text=$(cat "$errfile" 2>/dev/null || true)
-  rm -f "$outfile" "$errfile"
-
-  prompt_chars=${#prompt}
-  reply_chars=${#reply}
-
-  [[ $quiet -eq 0 ]] && log_call "$peer" "$role" "$dur" "$ec" "$prompt_chars" "$reply_chars"
-
-  if [[ $ec -eq 124 || $ec -eq 137 ]]; then
-    echo "nexus: $peer timed out after ${timeout}s" >&2
-    exit 124
-  fi
-  if [[ $ec -ne 0 ]]; then
-    echo "nexus: $peer exited $ec" >&2
-    [[ -n "$err_text" ]] && printf '%s\n' "$err_text" >&2
-    exit "$ec"
-  fi
+  # Emit output
+  local prompt_chars=${#prompt}
+  local global_ec=0
 
   if [[ $json -eq 1 ]]; then
-    local escaped
-    escaped=$(printf '%s' "$reply" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
-    printf '{"peer":"%s","role":"%s","duration_s":%d,"exit":%d,"reply":%s}\n' \
-      "$peer" "${role:-}" "$dur" "$ec" "$escaped"
+    # JSON: single object if 1 peer, array if multiple
+    if [[ ${#peer_list[@]} -eq 1 ]]; then
+      local p="${peer_list[0]}"
+      local dur=$(cat "$tmpdir/$p.dur" 2>/dev/null || echo 0)
+      local ec=$(cat "$tmpdir/$p.ec" 2>/dev/null || echo 1)
+      local reply=$(cat "$tmpdir/$p.out" 2>/dev/null || true)
+      local escaped
+      escaped=$(printf '%s' "$reply" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+      printf '{"peer":"%s","role":"%s","duration_s":%s,"exit":%s,"reply":%s}\n' \
+        "$p" "${role:-}" "$dur" "$ec" "$escaped"
+      [[ $ec -ne 0 ]] && global_ec=$ec
+    else
+      local first=1
+      echo -n "["
+      for p in "${peer_list[@]}"; do
+        [[ $first -eq 0 ]] && echo -n ","
+        first=0
+        local dur=$(cat "$tmpdir/$p.dur" 2>/dev/null || echo 0)
+        local ec=$(cat "$tmpdir/$p.ec" 2>/dev/null || echo 1)
+        local reply=$(cat "$tmpdir/$p.out" 2>/dev/null || true)
+        local escaped
+        escaped=$(printf '%s' "$reply" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+        printf '{"peer":"%s","role":"%s","duration_s":%s,"exit":%s,"reply":%s}' \
+          "$p" "${role:-}" "$dur" "$ec" "$escaped"
+        [[ $ec -ne 0 ]] && global_ec=$ec
+      done
+      echo "]"
+    fi
   else
-    printf '%s\n' "$reply"
+    # Bar-wrapped output, one block per peer
+    for p in "${peer_list[@]}"; do
+      local dur=$(cat "$tmpdir/$p.dur" 2>/dev/null || echo "")
+      local ec=$(cat "$tmpdir/$p.ec" 2>/dev/null || echo 1)
+      print_peer_bar "$p" "${role:-no role}" "$dur"
+      if [[ $ec -eq 0 ]]; then
+        cat "$tmpdir/$p.out"
+      else
+        local err_text
+        err_text=$(cat "$tmpdir/$p.err" 2>/dev/null || true)
+        if [[ $ec -eq 124 || $ec -eq 137 ]]; then
+          echo "(timed out after ${timeout}s)"
+        else
+          echo "(error: exit $ec)"
+          [[ -n "$err_text" ]] && echo "$err_text"
+        fi
+        global_ec=$ec
+      fi
+      print_peer_end_bar
+      echo
+    done
   fi
+
+  # Log every call
+  if [[ $quiet -eq 0 ]]; then
+    for p in "${peer_list[@]}"; do
+      local dur=$(cat "$tmpdir/$p.dur" 2>/dev/null || echo 0)
+      local ec=$(cat "$tmpdir/$p.ec" 2>/dev/null || echo 0)
+      local reply=$(cat "$tmpdir/$p.out" 2>/dev/null || true)
+      log_call "$p" "$role" "$dur" "$ec" "$prompt_chars" "${#reply}"
+    done
+  fi
+
+  rm -rf "$tmpdir"
+  exit "$global_ec"
 }
 
 cmd_note() {

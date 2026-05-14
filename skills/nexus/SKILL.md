@@ -23,9 +23,13 @@ The recommended invocation is **just the peer name and the question** — no fla
 
 ```bash
 ~/.claude/skills/nexus/nexus.sh ask <peer> "<question>"
+~/.claude/skills/nexus/nexus.sh ask <peer1>,<peer2> "<question>"   # group chat
+~/.claude/skills/nexus/nexus.sh ask all "<question>"               # all installed peers
 ```
 
-`<peer>` is one of `codex | claude | gemini`. The wrapper auto-infers the right `--role` from the prompt text (see below), defaults `--effort` to `low` for chat-style use, enforces a 120s timeout, and writes a metadata-only call log to `~/.modelnexus/calls.log`.
+`<peer>` is one of `codex | claude | gemini`, OR a comma-separated list of two or three of them, OR the literal `all` (expands to every peer that has a helper on disk). Multi-peer asks run **in parallel**, so two peers cost ~max(p1, p2) wall-clock time, not sum.
+
+The wrapper auto-infers the right `--role` from the prompt text (see below), defaults `--effort` to `low` for chat-style use, enforces a 120s timeout, writes a metadata-only call log to `~/.modelnexus/calls.log`, and wraps every reply in a visual bar so the host doesn't paraphrase it away.
 
 The other subcommands:
 
@@ -82,6 +86,20 @@ The per-peer `lib/ask-*.sh` helpers still work if you want the minimal path with
 ~/.claude/skills/nexus/nexus.sh ask codex --role architect \
   "Should I use a token-bucket or a sliding-window rate limiter?"
 ```
+
+### Group-chat examples (multiple peers in parallel)
+
+```bash
+# Two peers on the same question, parallel:
+~/.claude/skills/nexus/nexus.sh ask codex,gemini \
+  "In one sentence each, what's the right shape for a status badge component?"
+
+# All available peers — runs in parallel; ~max(t1,t2,t3) wall clock:
+~/.claude/skills/nexus/nexus.sh ask all \
+  "Should I use token-bucket or sliding-window rate limiting for a public API?"
+```
+
+Output is stacked, one bar-wrapped reply per peer. Auto-role still applies — picks the same role for all peers in a single call. Pass `--role <role>` to override.
 
 Available role keywords (any other value is used as `"You are acting as <role>"`):
 
@@ -174,10 +192,11 @@ The same shape applies to `ask-gemini.sh` and `ask-claude.sh` — `nexus.sh` fol
 ## Rules
 
 1. **Always structure peer prompts** per the four parts above. The single biggest predictor of peer-reply quality.
-2. **Don't loop on peers.** One call per question, not three. If a peer's reply needs follow-up, do the follow-up yourself or ask the user — don't ping-pong silently.
-3. **Quote the peer's reply** when surfacing it in your response so the user knows what came from whom.
-4. **Cite the peer in `note.sh`** when persisting their finding (e.g. `"Codex (2026-05-14): race on line 47"`).
-5. **Default to silence** — if Claude alone has high confidence, just answer. The skill is for when a peer is genuinely the right specialist, not for every reply.
+2. **Preserve peer replies verbatim.** Every `nexus.sh ask` call returns output already wrapped in `═══ peer · role · Xs ═══` bars. When showing the result to the user, **paste the full bar-wrapped block as-is — do NOT paraphrase or summarize what's between the bars**. Add your own commentary AFTER the closing bar, not in place of the reply. The user wants to see what the peer actually said, then your reaction to it — that's the whole point of asking a peer.
+3. **Use multi-peer (`codex,gemini` or `all`) when the user says "what do X and Y think"** or "get a group opinion" or similar. They run in parallel; you get all replies in one tool call. Then synthesize *after* all the bars, comparing what each peer said.
+4. **Don't loop on peers.** One call per question, not three. If a peer's reply needs follow-up, do the follow-up yourself or ask the user — don't ping-pong silently.
+5. **Cite the peer in `note.sh`** when persisting their finding (e.g. `"Codex (2026-05-14): race on line 47"`).
+6. **Default to silence** — if you alone have high confidence, just answer. The skill is for when a peer is genuinely the right specialist, not for every reply.
 
 ## Install
 

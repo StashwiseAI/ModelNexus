@@ -10,11 +10,13 @@ All callable via your `Bash`-equivalent tool. The single front door does the rig
 
 ```bash
 ~/.claude/skills/nexus/nexus.sh ask <peer> "<question>"
+~/.claude/skills/nexus/nexus.sh ask <peer1>,<peer2> "<question>"   # group chat
+~/.claude/skills/nexus/nexus.sh ask all "<question>"               # all installed peers
 ```
 
-`<peer>` is one of `claude | codex | gemini`. **Don't ask the host model to consult itself** — if you're Codex, don't `ask codex`; if you're Claude, don't `ask claude`.
+`<peer>` is one of `claude | codex | gemini`, OR a comma-separated list, OR the literal `all`. Multi-peer asks run **in parallel**. **Don't ask the host model to consult itself** — if you're Codex, don't `ask codex`; if you're Claude, don't `ask claude`.
 
-The wrapper auto-infers role from prompt keywords, defaults effort to `low` for chat-style use, enforces a 120s timeout, and writes a metadata-only call log to `~/.modelnexus/calls.log`.
+The wrapper auto-infers role from prompt keywords, defaults effort to `low` for chat-style use, enforces a 120s timeout, writes a metadata-only call log to `~/.modelnexus/calls.log`, and wraps every reply in a visual `═══ peer · role · Xs ═══` bar. **Paste the full bar-wrapped block to the user as-is — don't paraphrase what's between the bars.**
 
 ```bash
 ~/.claude/skills/nexus/nexus.sh note <kind> "<content>"        # cross-session memory
@@ -47,10 +49,11 @@ Override with `--role <role>` when the auto pick is wrong, or `--context-file <p
 ## Rules
 
 1. **One call per question.** Don't loop on peers — ping-pong silently between models is rarely what the user wants.
-2. **Quote the peer's reply.** The user should see who said what.
-3. **Verify peer-cited file:line refs.** Reasoning models often fabricate plausible-looking line numbers they never actually saw. The substantive claim may be right; the citation is a signpost, not a fact.
-4. **Default to silence.** If you can answer well alone, just answer. Peers are specialists, not a committee.
-5. **Don't ask the host model to consult itself.** Skip `ask claude` from Claude Code, `ask codex` from Codex CLI, etc.
+2. **Preserve peer replies verbatim.** The bar-wrapped output is the peer's actual reply. Paste it as-is and add your reaction AFTER the closing bar — never paraphrase what's between the bars.
+3. **Use multi-peer for "what do X and Y think"** or group-opinion requests. They run in parallel; you get all replies in one tool call.
+4. **Verify peer-cited file:line refs.** Reasoning models often fabricate plausible-looking line numbers they never actually saw. The substantive claim may be right; the citation is a signpost, not a fact.
+5. **Default to silence.** If you can answer well alone, just answer. Peers are specialists, not a committee.
+6. **Don't ask the host model to consult itself.** Skip `ask claude` from Claude Code, `ask codex` from Codex CLI, etc.
 
 ## Cross-session notes
 

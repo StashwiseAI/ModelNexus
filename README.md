@@ -144,6 +144,46 @@ Below: real exchanges from a session that built this skill. The **You** lines ar
 >
 > All three of "thingy", "v2", and "final" are smells — they signal the author didn't have a clear domain in mind. Want me to propose a naming convention for the whole directory?
 
+### Group chat — ask multiple peers at once
+
+**You**:
+> What do codex and gemini think about this — should I use token-bucket or sliding-window rate limiting for a public API? Give me a one-paragraph take from each.
+
+**Claude** *(both peers run in parallel via a single tool call, real output)*:
+> Asking 3 peers in parallel: claude, codex, gemini (auto-role: architect)…
+>
+> ```
+> ══════════════════════════════════════════════════════════
+>   codex · architect · 28s
+> ══════════════════════════════════════════════════════════
+>
+> - Objection: Token-bucket can permit short burst spikes that feel unfair
+>   and can overload expensive public API paths.
+> - Validation: Use token-bucket as the default because it is simpler,
+>   cheaper, distributed-friendly, and handles normal client jitter well.
+> - Improvement: Add endpoint weights, tight burst caps, and a secondary
+>   sliding-window quota for abuse-sensitive or billing-sensitive limits.
+> ══════════════════════════════════════════════════════════
+>
+> ══════════════════════════════════════════════════════════
+>   gemini · architect · 22s
+> ══════════════════════════════════════════════════════════
+>
+> Objection: Token-bucket's burst support can mask systemic capacity issues
+> and cause non-linear failures once the bucket is exhausted.
+> Validation: Sliding-window (weighted counters) gives the most granular
+> protection and avoids the "reset" surges of fixed windows.
+> Improvement: Add cost-based weighting so different endpoints consume
+> tokens proportional to their actual CPU/memory footprint.
+> Choice: Use sliding-window for a public API — more consistent, more
+> equitable, better-protected against erratic traffic.
+> ══════════════════════════════════════════════════════════
+> ```
+>
+> They disagree: Codex defaults to token-bucket with a sliding-window safety quota; Gemini argues sliding-window should be the default for public APIs. The common ground is **cost-based weighting** — both want different endpoints to consume the limiter proportional to their actual cost. My read: go token-bucket with Codex's two-layer pattern (burst caps + sliding-window quota for abuse-sensitive paths) unless your downstream genuinely can't absorb bursts. Want me to sketch the implementation?
+
+Same one-question fan-out, three voices (or two — depends what's installed), wall-clock ~max of the slowest peer instead of sum. Real audit trail of who said what, then the host's synthesis at the end.
+
 ### Cross-host: ask Claude from inside Codex
 
 **You** *(in Codex CLI)*:
@@ -184,6 +224,7 @@ You don't need to memorize commands. Any of these phrasings work — your host m
 | "Ask codex…" / "What does codex think…" / "Have codex draft…" | Codex |
 | "Ask claude…" / "Get claude's take…" *(from non-Claude hosts)* | Claude |
 | "Check with gemini…" / "Have gemini summarize…" | Gemini |
+| "What do codex and gemini think…" / "Get a group opinion…" / "Ask all the models…" | Multi-peer (parallel) |
 | "Get a second opinion on…" / "Sanity-check this with…" | Whichever peer fits best |
 | "Remember…" / "We decided…" / "For later…" | Notes |
 | "What did we decide about…" / "Recall…" | Search notes |
