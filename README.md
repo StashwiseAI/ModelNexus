@@ -10,28 +10,29 @@ This README is written for you, the human at the keyboard. You don't run anythin
 
 ### Step 1 — Get the code
 
-If you haven't cloned the repo yet:
-
 ```bash
-git clone <repo-url> ModelNexus
+git clone git@github.com:StashwiseAI/ModelNexus.git
 ```
 
-(Replace `<repo-url>` with the actual URL. If you already have the repo, skip to Step 2.)
+(or with HTTPS if you don't have SSH set up: `git clone https://github.com/StashwiseAI/ModelNexus.git`)
 
-### Step 2 — Move into the package directory
+That creates a `ModelNexus/` directory in your current location.
 
-The package lives in a `modelnexus/` subdirectory inside the repo. Open your terminal and `cd` into it:
+### Step 2 — Move into the directory
 
 ```bash
-cd ~/path/to/ModelNexus/modelnexus
+cd ModelNexus
 ```
 
-(Substitute wherever you cloned it. If you cloned into your home folder, that's `cd ~/ModelNexus/modelnexus`.)
-
-You can confirm you're in the right place by listing the directory — you should see `install.sh`, `skills/`, and this `README.md`:
+Confirm you're in the right place by listing — you should see `install.sh`, `skills/`, and `README.md` at the top level:
 
 ```bash
 ls
+```
+
+Expected output:
+```
+README.md  advanced/  capabilities.json  install.sh  package.json  skills/  teams.json  tsconfig.json
 ```
 
 ### Step 3 — Run the installer
@@ -74,7 +75,7 @@ If nothing happens or the host model says it doesn't know about nexus, **start a
 
 | Symptom | Fix |
 |---|---|
-| `./install.sh: No such file or directory` | You're in the wrong directory. Re-run `cd ~/path/to/ModelNexus/modelnexus` and try again. |
+| `./install.sh: No such file or directory` | You're in the wrong directory. Run `cd ModelNexus` (the directory `git clone` just created) and try again. |
 | `Permission denied: ./install.sh` | Run `chmod +x install.sh` first, then try again. |
 | `Claude Code: ~/.claude not found` | Run `claude` (the CLI) once interactively to log in. That creates `~/.claude`. Then re-run `./install.sh`. |
 | `Codex CLI: codex not on PATH` | If you have ChatGPT Plus and want to use Codex, install: `npm install -g @openai/codex`. Then re-run `./install.sh`. |
