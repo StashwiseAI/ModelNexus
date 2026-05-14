@@ -1,11 +1,34 @@
 #!/usr/bin/env bash
 # install.sh — set up the nexus skill for whichever host CLIs you have
-# installed (Claude Code and/or Codex CLI).
+# installed (Claude Code and/or Codex CLI), and install Aider as a peer
+# (unless --skip-aider).
 #
 # Run it from anywhere; the script finds its own location.
 # Run it as many times as you want; it's idempotent.
+#
+# Flags:
+#   --skip-aider     don't auto-install aider
+#   --skip-peers     don't auto-install any peers (aider, etc.)
+#   -h / --help      show this message
 
 set -euo pipefail
+
+SKIP_AIDER=0
+SKIP_PEERS=0
+for arg in "$@"; do
+  case "$arg" in
+    --skip-aider) SKIP_AIDER=1 ;;
+    --skip-peers) SKIP_PEERS=1 ;;
+    -h|--help)
+      sed -n '2,12p' "$0" | sed 's/^# \?//'
+      exit 0
+      ;;
+    *)
+      echo "unknown flag: $arg" >&2
+      exit 2
+      ;;
+  esac
+done
 
 # Find this script's directory (the repo root), regardless of where it's called from.
 REPO=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -91,7 +114,95 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Peer-CLI doctor
+# 3. Aider (peer install — only one of the four peers that needs setup here;
+# claude and codex are host CLIs you'd install separately, and gemini is
+# Google's CLI install path which varies too much to automate cleanly)
+# ---------------------------------------------------------------------------
+install_aider() {
+  if command -v aider >/dev/null 2>&1; then
+    printf '  %s aider:       already installed at %s\n' "$(green '✓')" "$(command -v aider)"
+    return 0
+  fi
+
+  echo
+  echo "  Installing aider as a peer (~30s — bg downloads)..."
+
+  local installer=""
+  if command -v pipx >/dev/null 2>&1; then
+    installer="pipx"
+  elif command -v brew >/dev/null 2>&1; then
+    echo "    no pipx on PATH; installing pipx via brew first..."
+    if brew install pipx >/dev/null 2>&1; then
+      # brew install pipx doesn't auto-ensurepath; do it now so aider lands on PATH
+      pipx ensurepath >/dev/null 2>&1 || true
+      installer="pipx"
+    else
+      printf '  %s aider:       brew install pipx failed; skipping.\n' "$(yellow '!')"
+      printf '        manual: brew install pipx && pipx install aider-chat\n'
+      return 0
+    fi
+  elif command -v uv >/dev/null 2>&1; then
+    installer="uv"
+  else
+    printf '  %s aider:       no pipx/brew/uv on PATH. install one of these first, then re-run:\n' "$(yellow '!')"
+    printf '        macOS:  brew install pipx && ./install.sh\n'
+    printf '        Linux:  python3 -m pip install --user pipx && python3 -m pipx ensurepath && ./install.sh\n'
+    return 0
+  fi
+
+  # Use aider's official `aider-install` package — it picks a Python version
+  # that has pre-built scipy wheels (otherwise pip tries to compile scipy from
+  # source and fails when gfortran isn't installed). Two-step:
+  #   1. pipx install aider-install   (tiny shim)
+  #   2. aider-install                 (the shim downloads + installs aider)
+  case "$installer" in
+    pipx)
+      if ! pipx install aider-install >/dev/null 2>&1; then
+        # Already installed? Re-run is fine.
+        pipx install --force aider-install >/dev/null 2>&1 || {
+          printf '  %s aider:       pipx install aider-install failed. try manually.\n' "$(red '✗')"
+          return 0
+        }
+      fi
+      if ! aider-install >/dev/null 2>&1; then
+        printf '  %s aider:       aider-install bootstrap failed. try manually: pipx install aider-install && aider-install\n' "$(red '✗')"
+        return 0
+      fi
+      ;;
+    uv)
+      if ! uv tool install aider-install >/dev/null 2>&1; then
+        printf '  %s aider:       uv tool install aider-install failed. try manually.\n' "$(red '✗')"
+        return 0
+      fi
+      if ! aider-install >/dev/null 2>&1; then
+        printf '  %s aider:       aider-install bootstrap failed. try manually: uv tool install aider-install && aider-install\n' "$(red '✗')"
+        return 0
+      fi
+      ;;
+  esac
+
+  # Re-resolve PATH (pipx/uv may have just added a new bin dir)
+  hash -r 2>/dev/null || true
+
+  if command -v aider >/dev/null 2>&1; then
+    printf '  %s aider:       installed at %s\n' "$(green '✓')" "$(command -v aider)"
+    printf '        %s aider needs a provider API key (Claude Pro / ChatGPT Plus subscriptions do NOT work for it).\n' "$(dim 'note:')"
+    printf '              %s export ANTHROPIC_API_KEY=...   # for Claude\n' "$(dim 'set ONE of:')"
+    printf '                          export OPENAI_API_KEY=...      # for GPT\n'
+    printf '                          export GEMINI_API_KEY=...      # for Gemini\n'
+  else
+    printf '  %s aider:       installed but not yet on PATH. Try: source ~/.zshrc && which aider\n' "$(yellow '!')"
+    printf '        or restart your shell, then re-run this script to confirm.\n'
+  fi
+}
+
+if [[ $SKIP_PEERS -eq 0 && $SKIP_AIDER -eq 0 ]]; then
+  echo
+  install_aider
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Peer-CLI doctor
 # ---------------------------------------------------------------------------
 echo
 echo "Which peer CLIs are available:"

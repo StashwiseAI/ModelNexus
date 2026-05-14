@@ -81,6 +81,9 @@ If nothing happens or the host model says it doesn't know about nexus, **start a
 | `Codex CLI: codex not on PATH` | If you have ChatGPT Plus and want to use Codex, install: `npm install -g @openai/codex`. Then re-run `./install.sh`. |
 | The host model doesn't seem to know about `nexus` | Quit your Claude Code / Codex CLI session and start a fresh one. Skills are loaded at session start. |
 | Existing `~/.codex/AGENTS.md` blocks the link | The installer will tell you. Either remove it (`rm ~/.codex/AGENTS.md`) and re-run, or append: `cat skills/nexus/AGENTS.md >> ~/.codex/AGENTS.md`. |
+| `aider install: no pipx/brew/uv on PATH` | macOS: `brew install pipx`, then re-run `./install.sh`. Linux: `python3 -m pip install --user pipx && python3 -m pipx ensurepath`, then re-run. |
+| Don't want aider? | Run `./install.sh --skip-aider` (or `--skip-peers` to skip all auto-peer installs). |
+| Aider needs an API key | Unlike `claude`/`codex` which use subscriptions, aider can't. After install, `export ANTHROPIC_API_KEY=...` (or `OPENAI_API_KEY=...` / `GEMINI_API_KEY=...`) in your `~/.zshrc` / `~/.bashrc`. |
 
 The installer is **idempotent** — run it as many times as you want. It detects what's already set up and skips it.
 
