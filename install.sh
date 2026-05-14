@@ -1,24 +1,22 @@
 #!/usr/bin/env bash
 # install.sh — set up the nexus skill for whichever host CLIs you have
-# installed (Claude Code and/or Codex CLI), and install Aider as a peer
-# (unless --skip-aider).
+# installed (Claude Code and/or Codex CLI).
 #
 # Run it from anywhere; the script finds its own location.
 # Run it as many times as you want; it's idempotent.
 #
 # Flags:
-#   --skip-aider     don't auto-install aider
-#   --skip-peers     don't auto-install any peers (aider, etc.)
+#   --with-aider     also install aider (a peer; requires an API key, not
+#                    subscription auth — most users don't need it given
+#                    claude/codex/gemini already cover autonomous edits)
 #   -h / --help      show this message
 
 set -euo pipefail
 
-SKIP_AIDER=0
-SKIP_PEERS=0
+WITH_AIDER=0
 for arg in "$@"; do
   case "$arg" in
-    --skip-aider) SKIP_AIDER=1 ;;
-    --skip-peers) SKIP_PEERS=1 ;;
+    --with-aider) WITH_AIDER=1 ;;
     -h|--help)
       sed -n '2,12p' "$0" | sed 's/^# \?//'
       exit 0
@@ -196,7 +194,7 @@ install_aider() {
   fi
 }
 
-if [[ $SKIP_PEERS -eq 0 && $SKIP_AIDER -eq 0 ]]; then
+if [[ $WITH_AIDER -eq 1 ]]; then
   echo
   install_aider
 fi
